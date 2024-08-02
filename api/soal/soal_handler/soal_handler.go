@@ -2,7 +2,6 @@ package soal_handler
 
 import (
 	service "bank_soal/api/soal/soal_service"
-	"bank_soal/middleware"
 	"bank_soal/models"
 	"bank_soal/utils/https"
 	"fmt"
@@ -10,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type SoalHandler struct {
@@ -21,6 +20,7 @@ func NewSoalHandler(service service.SoalServiceInterface) *SoalHandler {
 	return &SoalHandler{service: service}
 }
 
+// handler/soal_handler.go
 func (h *SoalHandler) CreateSoal(e echo.Context) error {
 	fName := "Soal_handler.CreateSoal"
 	ctx := e.Request().Context()
@@ -35,13 +35,14 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 		JawabanD     string `json:"jawaban_d"`
 		JawabanBenar string `json:"jawaban_benar"`
 	}
+
 	req := reqBody{}
 
 	if err := e.Bind(&req); err != nil {
 		return https.WriteBadRequestResponse(e, https.ResponseBadRequestError)
 	}
 
-	// validate request body
+	// Validate request body
 	if err := validator.New().Struct(&req); err != nil {
 		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, err)
 	}
@@ -53,7 +54,7 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 		JawabanA:     req.JawabanA,
 		JawabanB:     req.JawabanB,
 		JawabanC:     req.JawabanC,
-		JawabanD:     req.JawabanC,
+		JawabanD:     req.JawabanD,
 		JawabanBenar: req.JawabanBenar,
 	}
 
@@ -90,16 +91,6 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 	soal, totalPage, totalData, err := h.service.GetSoal(ctx, filter)
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
-	}
-	id, role, err := middleware.ExtractToken(e)
-	if err != nil {
-		return e.JSON(http.StatusBadRequest, map[string]string{"status": "BAD_REQUEST", "data": "invalid token"})
-	}
-
-	fmt.Println(id)
-
-	if role == "user" {
-		return https.WriteBadRequestResponse(e, https.ResponseBadRequestError)
 	}
 
 	// Build the response

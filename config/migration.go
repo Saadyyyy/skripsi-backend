@@ -12,6 +12,7 @@ func DBMigration(db *gorm.DB) {
 	err := db.AutoMigrate(
 		&models.Users{},
 		&models.Soals{},
+		&models.Category{},
 	)
 
 	if err != nil {

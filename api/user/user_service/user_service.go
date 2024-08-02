@@ -77,18 +77,19 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 func (u *UserServiceImpl) LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, string, error) {
 	user, err := u.repo.LoginUser(ctx, usernameOrEmail, password)
 	if err != nil {
-		return models.UsersRespon{}, "", fmt.Errorf("gagal get login user repository %+v", err)
+		return models.UsersRespon{}, "", fmt.Errorf("gagal get login user repository: %+v", err)
 	}
-	fmt.Println("userr", user)
+
 	comparePass := healper.CompareHash(user.Password, password)
 	if !comparePass {
 		return models.UsersRespon{}, "", fmt.Errorf("gagal compare pass")
 	}
+	users := models.Users{}
 
 	// Create JWT token
-	token, err := middleware.CreateToken(user.Username, user.Role)
-	if err != nil {
-		return models.UsersRespon{}, "", fmt.Errorf("gagal create token %+v", err)
+	token, err2 := middleware.CreateToken(users.Username, user.Role)
+	if err2 != nil {
+		return models.UsersRespon{}, "", fmt.Errorf("gagal create token: %+v", err)
 	}
 	return user, token, nil
 }

@@ -102,6 +102,7 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 }
 
 func (s *SoalServiceImpl) UpdateSoal(ctx context.Context, soal models.Soals) error {
+
 	err := s.repo.UpdateSoal(ctx, soal)
 	if err != nil {
 		return fmt.Errorf("gagal get update soal dari repository %+v", err)
@@ -115,6 +116,7 @@ func (s *SoalServiceImpl) DeletedSoal(ctx context.Context, ID int64) error {
 	if err != nil {
 		return fmt.Errorf("gagal get DeleteSoal dari repository %+v ", err)
 	}
+
 	return nil
 }
 

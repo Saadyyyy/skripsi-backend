@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type UserHandler struct {
@@ -83,10 +83,6 @@ func (h *UserHandler) LoginUser(e echo.Context) error {
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
-	fmt.Println("username", req.UsernameOrEmail)
-	fmt.Println("password", req.Password)
-	fmt.Println("user", user)
-	fmt.Println("token", token)
 
 	// Set the token in a cookie
 	middleware.SetTokenCookie(e, token)
@@ -135,10 +131,10 @@ func (h *UserHandler) UpdateUser(e echo.Context) error {
 
 	return https.WriteOkResponse(e, fmt.Sprintf("Berhasil membuat akun dengan id %d", resp.UserId))
 }
+
 func (h *UserHandler) GetAllUser(e echo.Context) error {
 	fName := "soal_handler.GetAllUser"
 	ctx := e.Request().Context()
-	fmt.Println("Received token:", e.Request().Header.Get("Authorization"))
 
 	var filter models.FilterUser
 	filter.Keyword = e.QueryParam("keyword")
@@ -146,22 +142,6 @@ func (h *UserHandler) GetAllUser(e echo.Context) error {
 	if err != nil {
 		page = 1
 	}
-
-	id, role, err := middleware.ExtractToken(e)
-	if err != nil {
-		return e.JSON(http.StatusBadRequest, map[string]string{"status": "BAD_REQUEST", "data": "invalid token"})
-	}
-
-	fmt.Println(id)
-
-	if role == "user" {
-		return https.WriteBadRequestResponse(e, https.ResponseBadRequestError)
-	}
-	fmt.Println("ID:", id)
-	fmt.Println("Role:", role)
-	fmt.Println("Keyword:", filter.Keyword)
-	fmt.Println("Page:", page)
-	fmt.Println("Limit:", filter.Limit)
 
 	filter.Page = page
 	limit, err := strconv.Atoi(e.QueryParam("per_page"))

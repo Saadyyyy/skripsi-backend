@@ -18,9 +18,10 @@ const (
 		RETURNING user_id;
 	`
 	queryGetUser = `		
-		SELECT username , password ,email  
-		FROM users 
-		WHERE (username = $1 OR email = $2) and password=$3 limit 1
+		SELECT user_id,username, email, password, role
+		FROM users
+		WHERE username = $1 OR email = $2
+		LIMIT 1
 	`
 
 	queryUpdateUser = `
@@ -43,7 +44,7 @@ const (
 	queryCekRole = `SELECT role FROM users WHERE id = $1 LIMIT 1`
 
 	queryGetUserById = `
-	SELECT id, name, role FROM users WHERE id = $1
+	SELECT user_id, name, role FROM users WHERE id = $1
 	`
 )
 
@@ -80,13 +81,15 @@ func (r *UserRepositoryInterfaceImpl) CreateUser(ctx context.Context, user model
 
 func (r *UserRepositoryInterfaceImpl) LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, error) {
 	var user models.UsersRespon
-	err := r.db.QueryRowContext(ctx, queryGetUser, usernameOrEmail, usernameOrEmail, password).Scan(&user.Username, &user.Email, &user.Password)
+	err := r.db.QueryRowContext(ctx, queryGetUser, usernameOrEmail, usernameOrEmail).Scan(&user.UserId, &user.Username, &user.Email, &user.Password, &user.Role)
 	if err != nil {
-		return models.UsersRespon{}, fmt.Errorf("error logging in user: %v", err)
+		if err == sql.ErrNoRows {
+			return models.UsersRespon{}, fmt.Errorf("username or email not found")
+		}
+		return models.UsersRespon{}, fmt.Errorf("error querying user: %v", err)
 	}
-	fmt.Println(queryGetUser)
-	fmt.Println("usernameOrEmail", usernameOrEmail)
-	fmt.Println("password", password)
+
+	// Return user without password
 	return user, nil
 }
 

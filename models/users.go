@@ -8,15 +8,12 @@ type Users struct {
 	Role      int64
 	Token     string
 	CreatedAt string
-	CreatedBy string
 	UpdatedAt string
-	UpdatedBy string
 	DeletedAt string
-	DeletedBy string
 }
 
 type UsersRespon struct {
-	UserId   string
+	UserId   int64
 	Username string
 	Password string
 	Email    string

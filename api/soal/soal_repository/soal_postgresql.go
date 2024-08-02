@@ -16,11 +16,32 @@ const (
 				values($1,$2,$3,$4,$5,$6,$7,$8) returning soal_id`
 
 	queryGetSoal = `
-		select soal_id, category_id,soal,jawaban_a,jawaban_b,jawaban_c,jawaban_d,jawaban_benar,created_at from soals where deleted_at is null
+	SELECT 
+    soals.soal_id, 
+    soals.category_id, 
+    categories.category AS category_name,
+    soals.soal, 
+    soals.jawaban_a, 
+    soals.jawaban_b, 
+    soals.jawaban_c, 
+    soals.jawaban_d, 
+    soals.jawaban_benar, 
+    soals.created_at
+FROM soals
+JOIN categories ON soals.category_id = categories.category_id
+WHERE soals.deleted_at IS NULL
+
+		
 	`
 
 	queryCountSoal = `
-	select count(soal_id) from soals where deleted_at is null
+	select count(soal_id) from soals JOIN 
+    categories 
+ON 
+    soals.category_id = categories.category_id 
+WHERE 
+    soals.deleted_at IS NULL
+		
 	`
 
 	queryUpdateSoal = `
@@ -100,10 +121,11 @@ func (r *SoalRepositoryImpl) GetSoal(ctx context.Context, searchCriteria map[str
 		return
 	}
 	defer rows.Close()
+	var ct models.Category
 
 	for rows.Next() {
 		var s models.Soals
-		err = rows.Scan(&s.SoalId, &s.CategoryId, &s.Soal, &s.JawabanA, &s.JawabanB, &s.JawabanC, &s.JawabanD, &s.JawabanBenar, &s.CreatedAt)
+		err = rows.Scan(&s.SoalId, &s.CategoryId, &ct.Category, &s.Soal, &s.JawabanA, &s.JawabanB, &s.JawabanC, &s.JawabanD, &s.JawabanBenar, &s.CreatedAt)
 		if err != nil {
 			err = fmt.Errorf("row scan err: %+v", err)
 			return nil, err
