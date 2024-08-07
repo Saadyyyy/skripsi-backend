@@ -7,3 +7,11 @@ type Category struct {
 	UpdatedAt  string
 	DeletedAt  string
 }
+
+type FilterCategory struct {
+	Page       int
+	Limit      int
+	TglMulai   string
+	TglSelesai string
+	Keyword    string
+}

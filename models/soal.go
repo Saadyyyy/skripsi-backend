@@ -10,11 +10,8 @@ type Soals struct {
 	JawabanD     string
 	JawabanBenar string
 	CreatedAt    string
-	CreatedBy    string
 	UpdatedAt    string
-	UpdatedBy    string
 	DeletedAt    string
-	DeletedBy    string
 }
 
 type FilterSoal struct {

@@ -25,7 +25,7 @@ func Register(db *sqlx.DB, echo *echo.Echo) {
 	//route
 	user := echo.Group("/user")
 	user.POST("/register", handlerUser.CreateUser, middleware.JWTMiddleware(), middleware.AdminMiddleware).Name = "CreateUser"
-	user.GET("/", handlerUser.GetAllUser).Name = "GetAllUser"
+	user.GET("/", handlerUser.GetAllUser, middleware.JWTMiddleware(), middleware.AdminMiddleware).Name = "GetAllUser"
 	user.POST("/login", handlerUser.LoginUser).Name = "LoginUser"
 	user.POST("/update", handlerUser.UpdateUser, middleware.JWTMiddleware(), middleware.AdminMiddleware).Name = "UpdateUser"
 
@@ -48,4 +48,6 @@ func Register(db *sqlx.DB, echo *echo.Echo) {
 	//route
 	category := echo.Group("/category", middleware.JWTMiddleware())
 	category.POST("/create", handlerCategory.CreateSoal).Name = "CreateSoal"
+	category.GET("/detail", handlerCategory.GetCategoryByID).Name = "GetCategoryByID"
+	category.GET("/", handlerCategory.GetListCategory).Name = "GetListCategory"
 }

@@ -162,3 +162,4 @@ func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUs
 
 	return resp, totalPage, totalData, nil
 }
+

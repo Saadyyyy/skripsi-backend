@@ -93,6 +93,7 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
 
+	fmt.Println(soal)
 	// Build the response
 	response := map[string]interface{}{
 		"data":       soal,
