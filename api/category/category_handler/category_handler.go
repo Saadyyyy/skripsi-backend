@@ -59,12 +59,12 @@ func (h *CategoryHandler) GetCategoryByID(e echo.Context) error {
 
 	categoryIdStr := e.QueryParam("category_id")
 	if categoryIdStr == "" {
-		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid soal_id parameter"))
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid category_id parameter"))
 
 	}
 	categoryId, err := strconv.ParseInt(categoryIdStr, 10, 64)
 	if err != nil {
-		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("invalid soal_id parameter"))
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("invalid category_id parameter"))
 	}
 
 	resp, err := h.serviceCategory.GetCategoryByID(ctx, categoryId)
