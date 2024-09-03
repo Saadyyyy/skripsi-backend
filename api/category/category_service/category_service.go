@@ -4,7 +4,6 @@ import (
 	repository "bank_soal/api/category/category_repository"
 	"bank_soal/models"
 	"fmt"
-	"math"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -13,7 +12,7 @@ import (
 type CategoryService interface {
 	CreateCategory(ctx context.Context, ct models.Category) (id int64, err error)
 	GetCategoryByID(ctx context.Context, id int64) (ct models.Category, err error)
-	GetAllCategory(ctx context.Context, filter models.FilterCategory) (ct []models.Category, totalPage int64, totalData int64, err error)
+	GetAllCategory(ctx context.Context, filter models.FilterCategory) (ct []models.Category, totalData int64, err error)
 }
 
 type CategoryServiceImpl struct {
@@ -42,7 +41,7 @@ func (s *CategoryServiceImpl) GetCategoryByID(ctx context.Context, id int64) (ct
 	return result, nil
 }
 
-func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.FilterCategory) (ct []models.Category, totalPage int64, totalData int64, err error) {
+func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.FilterCategory) (ct []models.Category, totalData int64, err error) {
 	params := map[string]interface{}{
 		"deleted_at":   nil,
 		"custom_query": "",
@@ -60,19 +59,14 @@ func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.
 		filter.Limit = 10 // default limit
 	}
 
-	user, err := s.categoryRepo.GetListCategory(ctx, params, filter.Page, filter.Limit)
+	user, err := s.categoryRepo.GetListCategory(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
+		return nil, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
 	}
 
 	totalData, err = s.categoryRepo.CountUser(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
-	}
-
-	totalPage = int64(math.Ceil(float64(totalData) / float64(filter.Limit)))
-	if totalData == 0 {
-		totalPage = 1
+		return nil, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
 	}
 
 	resp := make([]models.Category, len(user))
@@ -83,6 +77,5 @@ func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.
 			CreatedAt:  s.CreatedAt,
 		}
 	}
-
-	return resp, totalPage, totalData, nil
+	return resp, totalData, nil
 }

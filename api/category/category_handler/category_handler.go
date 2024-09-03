@@ -96,7 +96,7 @@ func (h *CategoryHandler) GetListCategory(e echo.Context) error {
 	}
 	filter.Limit = limit
 
-	category, totalPage, totalData, err := h.serviceCategory.GetAllCategory(ctx, filter)
+	category, totalData, err := h.serviceCategory.GetAllCategory(ctx, filter)
 	if err != nil {
 		https.WriteServerErrorResponse(e, fName, err)
 
@@ -104,7 +104,6 @@ func (h *CategoryHandler) GetListCategory(e echo.Context) error {
 
 	respon := map[string]interface{}{
 		"data":       category,
-		"total_page": totalPage,
 		"total_data": totalData,
 	}
 	return e.JSON(http.StatusOK, respon)
