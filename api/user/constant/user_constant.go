@@ -1,8 +1,7 @@
 package constant
 
 const (
-	roleBiasa      = 0 //user biasa
-	roleAdmin      = 1 //admin create soal
-	roleSuperAdmin = 2 // super admin
-
+	roleBiasa      = 1 //user biasa
+	roleAdmin      = 2 //admin create soal
+	roleSuperAdmin = 3 // super admin
 )
