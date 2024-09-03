@@ -40,6 +40,9 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
+	// Serve static files
+	e.Static("/assets", "assets")
+
 	// Register routes with Echo
 	route.Register(sqlxDB, e)
 
