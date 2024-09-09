@@ -6,7 +6,6 @@ import (
 	"bank_soal/models"
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 
 type SoalServiceInterface interface {
 	CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error)
-	GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalPage int64, totalData int64, err error)
+	GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalData int64, err error)
 	UpdateSoal(ctx context.Context, soal models.Soals) error
 	DeletedSoal(ctx context.Context, ID int64) error
 	GetSoalById(ctx context.Context, ID int64) (soal models.Soals, err error)
@@ -44,7 +43,7 @@ func (s *SoalServiceImpl) CreateSoal(ctx context.Context, soal models.Soals) (ID
 	return ID, nil
 }
 
-func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalPage int64, totalData int64, err error) {
+func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalData int64, err error) {
 	params := map[string]interface{}{
 		"deleted_at":   nil,
 		"custom_query": "",
@@ -57,30 +56,17 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 
 	if filter.Category != 0 {
 		categoryString := strconv.Itoa(int(filter.Category))
-		params["custom_query"] = fmt.Sprintf("%s AND category_id='%s'", params["custom_query"], categoryString)
+		params["custom_query"] = fmt.Sprintf("%s AND soals.category_id='%s'", params["custom_query"], categoryString)
 	}
 
-	if filter.Page <= 0 {
-		filter.Page = 1 // default page
-	}
-
-	if filter.Limit <= 0 || filter.Limit > 10 {
-		filter.Limit = 10 // default limit
-	}
-
-	soal, err = s.repo.GetSoal(ctx, params, filter.Page, filter.Limit)
+	soal, err = s.repo.GetSoal(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
+		return nil, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
 	}
 
 	totalData, err = s.repo.CountSoal(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
-	}
-
-	totalPage = int64(math.Ceil(float64(totalData) / float64(filter.Limit)))
-	if totalData == 0 {
-		totalPage = 1
+		return nil, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
 	}
 
 	resp := make([]models.Soals, len(soal))
@@ -98,7 +84,9 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 		}
 	}
 
-	return resp, totalPage, totalData, nil
+	// fmt.Println("print data", resp)
+
+	return resp, totalData, nil
 }
 
 func (s *SoalServiceImpl) UpdateSoal(ctx context.Context, soal models.Soals) error {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -74,7 +73,7 @@ WHERE
 
 type SoalRepositoryInterface interface {
 	CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error)
-	GetSoal(ctx context.Context, searchCriteria map[string]interface{}, page int, limit int) (resp []models.Soals, err error)
+	GetSoal(ctx context.Context, searchCriteria map[string]interface{}) (resp []models.Soals, err error)
 	CountSoal(ctx context.Context, params map[string]interface{}) (count int64, err error)
 	UpdateSoal(ctx context.Context, soal models.Soals) error
 	DeleteSoal(ctx context.Context, ID int64) error
@@ -99,17 +98,10 @@ func (r *SoalRepositoryImpl) CreateSoal(ctx context.Context, soal models.Soals) 
 
 	return ID, nil
 }
-func (r *SoalRepositoryImpl) GetSoal(ctx context.Context, searchCriteria map[string]interface{}, page int, limit int) (soal []models.Soals, err error) {
-	if limit > 10 {
-		limit = 10
-	}
-	offset := (page - 1) * limit
-
-	limitString := strconv.Itoa(limit)
-	offsetString := strconv.Itoa(offset)
+func (r *SoalRepositoryImpl) GetSoal(ctx context.Context, searchCriteria map[string]interface{}) (soal []models.Soals, err error) {
 
 	// Ensure there's a space before LIMIT
-	sqlQuery := queryGetSoal + searchCriteria["custom_query"].(string) + " LIMIT " + limitString + " OFFSET " + offsetString
+	sqlQuery := queryGetSoal + searchCriteria["custom_query"].(string)
 
 	rows, err := r.db.QueryContext(ctx, sqlQuery)
 	if err != nil {

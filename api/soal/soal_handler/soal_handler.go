@@ -76,19 +76,8 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 	filter.TglMulai = e.QueryParam("tgl_mulai")
 	filter.TglSelesai = e.QueryParam("tgl_selesai")
 	filter.Keyword = e.QueryParam("soal")
-	page, err := strconv.Atoi(e.QueryParam("page"))
-	if err != nil {
-		page = 1
-	}
 
-	filter.Page = page
-	limit, err := strconv.Atoi(e.QueryParam("per_page"))
-	if err != nil {
-		limit = 10
-	}
-	filter.Limit = limit
-
-	soal, totalPage, totalData, err := h.service.GetSoal(ctx, filter)
+	soal, totalData, err := h.service.GetSoal(ctx, filter)
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
@@ -97,7 +86,6 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 	// Build the response
 	response := map[string]interface{}{
 		"data":       soal,
-		"total_page": totalPage,
 		"total_data": totalData,
 	}
 
