@@ -150,16 +150,83 @@ func (h *UserHandler) GetAllUser(e echo.Context) error {
 	}
 	filter.Limit = limit
 
-	soal, totalPage, totalData, err := h.usecase.GetAllUser(ctx, filter)
+	soal, totalData, err := h.usecase.GetAllUser(ctx, filter)
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
 
 	response := map[string]interface{}{
 		"data":       soal,
-		"total_page": totalPage,
 		"total_data": totalData,
 	}
 
 	return e.JSON(http.StatusOK, response)
+}
+
+func (h *UserHandler) GetUserByID(e echo.Context) error {
+	fName := "soal_handler.GetAllUser"
+	ctx := e.Request().Context()
+
+	userIdStr := e.QueryParam("user_id")
+	if userIdStr == "" {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid user_id parameter"))
+	}
+
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	if err != nil {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("invalid user_id parameter"))
+	}
+
+	resp, err := h.usecase.GetUserByID(ctx, userId)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+	}
+
+	type respon struct {
+		UserId   int64  `json:"user_id"`
+		Username string `json:"username"`
+		Role     int64  `json:"role"`
+		Profile  string `json:"profile"`
+	}
+
+	filter := respon{
+		UserId:   resp.UserId,
+		Username: resp.Username,
+		Role:     resp.Role,
+		Profile:  resp.Profile,
+	}
+
+	return https.WriteOkResponse(e, filter)
+}
+
+func (h *UserHandler) UpdateUserRoleByID(e echo.Context) error {
+	fName := "OrganisasiHttpHandler.UpdaUpdateUserRoleByIDteUser"
+	ctx := e.Request().Context()
+	type reqBody struct {
+		UserId int64 `json:"user_id"`
+		Role   int64 `json:"role"`
+	}
+
+	req := reqBody{}
+
+	if err := e.Bind(&req); err != nil {
+		return https.WriteBadRequestResponse(e, https.ResponseBadRequestError)
+	}
+
+	// validate request body
+	if err := validator.New().Struct(&req); err != nil {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, err)
+	}
+
+	resp := models.Users{
+		UserId: req.UserId,
+		Role:   req.Role,
+	}
+
+	err := h.usecase.UpdateUserRoleByID(ctx, resp)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+	}
+
+	return https.WriteOkResponse(e, fmt.Sprintf("Berhasil membuat update role dengan id %d", resp.UserId))
 }
