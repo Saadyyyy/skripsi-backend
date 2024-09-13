@@ -8,14 +8,21 @@ import (
 )
 
 func DBMigration(db *gorm.DB) {
-	// Lakukan migrasi pada model
-	err := db.AutoMigrate(
-		&models.Users{},
-		&models.Soals{},
-		&models.Category{},
-	)
-
+	// Migrate Category
+	err := db.AutoMigrate(&models.Category{})
 	if err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		log.Fatalf("Failed to migrate Category: %v", err)
+	}
+
+	// Migrate Soals
+	err = db.AutoMigrate(&models.Soals{})
+	if err != nil {
+		log.Fatalf("Failed to migrate Soals: %v", err)
+	}
+
+	// Migrate Users
+	err = db.AutoMigrate(&models.Users{})
+	if err != nil {
+		log.Fatalf("Failed to migrate Users: %v", err)
 	}
 }
