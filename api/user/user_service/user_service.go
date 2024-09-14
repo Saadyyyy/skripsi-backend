@@ -8,8 +8,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -18,7 +21,9 @@ type UserService interface {
 	CreateUser(ctx context.Context, user models.Users) (ID int64, err error)
 	LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, string, error)
 	UpdateUser(ctx context.Context, user models.Users) error
-	GetAllUser(ctx context.Context, filter models.FilterUser) (user []models.Users, totalPage int64, totalData int64, err error)
+	GetAllUser(ctx context.Context, filter models.FilterUser) (user []models.Users, totalData int64, err error)
+	GetUserByID(ctx context.Context, userId int64) (user models.Users, err error)
+	UpdateUserRoleByID(ctx context.Context, user models.Users) error
 }
 
 type UserServiceImpl struct {
@@ -30,16 +35,16 @@ func NewUserService(repo postgresql.UserRepositoryInterface, db *sqlx.DB) UserSe
 	return &UserServiceImpl{repo: repo, db: db}
 }
 
-// CreateUser service
 func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID int64, err error) {
-	//validasi empty
+	// Validasi kosong
 	if user.Username == "" || user.Password == "" || user.Email == "" {
-		return 0, fmt.Errorf("tidak boleh kosong harus di isi")
+		return 0, fmt.Errorf("tidak boleh kosong harus diisi")
 	}
 
+	// Cek username yang sudah ada
 	if user.Username != "" {
 		var existingUsername string
-		queryCekUsername := `select username from users where username = $1 limit 1`
+		queryCekUsername := `SELECT username FROM users WHERE username = $1 LIMIT 1`
 		err = u.db.QueryRowContext(ctx, queryCekUsername, user.Username).Scan(&existingUsername)
 		if err == nil {
 			return 0, fmt.Errorf("username sudah digunakan")
@@ -48,10 +53,11 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 		}
 	}
 
+	// Cek email yang sudah ada
 	if user.Email != "" {
-		var existingUsername string
-		queryCekUsername := `select email from users where email = $1 limit 1`
-		err = u.db.QueryRowContext(ctx, queryCekUsername, user.Username).Scan(&existingUsername)
+		var existingEmail string
+		queryCekEmail := `SELECT email FROM users WHERE email = $1 LIMIT 1`
+		err = u.db.QueryRowContext(ctx, queryCekEmail, user.Email).Scan(&existingEmail)
 		if err == nil {
 			return 0, fmt.Errorf("email sudah digunakan")
 		} else if err != sql.ErrNoRows {
@@ -59,19 +65,48 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 		}
 	}
 
+	// Pilih gambar acak
+	gambar, err := pilihGambarAcak()
+	if err != nil {
+		return 0, fmt.Errorf("gagal mendapatkan gambar: %v", err)
+	}
+	baseURL, exists := os.LookupEnv("BASEURL")
+	if !exists {
+		return 0, fmt.Errorf("variabel lingkungan BASEURL tidak ditemukan")
+	}
+	user.Profile = baseURL + gambar
+
+	// Hash password
 	hashedPassword, err := healper.HashPassword(user.Password)
 	if err != nil {
 		return 0, fmt.Errorf("gagal hash password")
 	}
 	user.Password = hashedPassword
 
-	//repository create user
+	// Simpan pengguna ke database
 	ID, err = u.repo.CreateUser(ctx, user)
 	if err != nil {
 		return 0, fmt.Errorf("gagal membuat pengguna: %v", err)
 	}
 
 	return ID, nil
+}
+
+func pilihGambarAcak() (string, error) {
+
+	gambarList := []string{"foto1.png", "foto2.png", "foto3.png", "foto4.png"}
+	rand.Seed(time.Now().UnixNano())
+	gambarTerpilih := gambarList[rand.Intn(len(gambarList))]
+
+	// Path ke file gambar di folder assets
+	path := filepath.Join("assets", gambarTerpilih)
+
+	// Pastikan file gambar dapat diakses
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return "", fmt.Errorf("file gambar tidak ditemukan: %s", path)
+	}
+
+	return path, nil
 }
 
 func (u *UserServiceImpl) LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, string, error) {
@@ -109,7 +144,7 @@ func (u *UserServiceImpl) UpdateUser(ctx context.Context, user models.Users) err
 	return nil
 }
 
-func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUser) (user []models.Users, totalPage int64, totalData int64, err error) {
+func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUser) (user []models.Users, totalData int64, err error) {
 	params := map[string]interface{}{
 		"deleted_at":   nil,
 		"custom_query": "",
@@ -125,27 +160,14 @@ func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUs
 	// 	params["custom_query"] = fmt.Sprintf("%s AND category_id='%s'", params["custom_query"], categoryString)
 	// }
 
-	if filter.Page <= 0 {
-		filter.Page = 1 // default page
-	}
-
-	if filter.Limit <= 0 || filter.Limit > 10 {
-		filter.Limit = 10 // default limit
-	}
-
-	user, err = s.repo.GetAllUser(ctx, params, filter.Page, filter.Limit)
+	user, err = s.repo.GetAllUser(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
+		return nil, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
 	}
 
 	totalData, err = s.repo.CountUser(ctx, params)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
-	}
-
-	totalPage = int64(math.Ceil(float64(totalData) / float64(filter.Limit)))
-	if totalData == 0 {
-		totalPage = 1
+		return nil, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
 	}
 
 	resp := make([]models.Users, len(user))
@@ -157,9 +179,26 @@ func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUs
 			Email:     s.Email,
 			Role:      s.Role,
 			CreatedAt: s.CreatedAt,
+			Profile:   s.Profile,
 		}
 	}
 
-	return resp, totalPage, totalData, nil
+	return resp, totalData, nil
 }
 
+func (s *UserServiceImpl) GetUserByID(ctx context.Context, userId int64) (user models.Users, err error) {
+	result, err := s.repo.GetUserByID(ctx, userId)
+	if err != nil {
+		return models.Users{}, fmt.Errorf("gagal get function dari repository ")
+	}
+	fmt.Println("result", result)
+	return result, nil
+}
+
+func (u *UserServiceImpl) UpdateUserRoleByID(ctx context.Context, user models.Users) error {
+	err2 := u.repo.UpdateUserRoleByID(ctx, user)
+	if err2 != nil {
+		return fmt.Errorf("gagal get repo update user %+v", err2)
+	}
+	return nil
+}
