@@ -110,40 +110,67 @@ func (h *CategoryHandler) GetListCategory(e echo.Context) error {
 
 }
 
-// func (h *SoalHandler) GetSoal(e echo.Context) error {
-// 	fName := "soal_handler.GetSoal"
-// 	ctx := e.Request().Context()
+func (h *CategoryHandler) UpdatedCategory(e echo.Context) error {
+	fName := "Category_handler.UpdatedCategory"
+	ctx := e.Request().Context()
 
-// 	var filter models.FilterSoal
-// 	category, _ := strconv.Atoi(e.QueryParam("category_id"))
-// 	filter.Category = int64(category)
-// 	// Bind query parameters manually
-// 	filter.TglMulai = e.QueryParam("tgl_mulai")
-// 	filter.TglSelesai = e.QueryParam("tgl_selesai")
-// 	filter.Keyword = e.QueryParam("soal")
-// 	page, err := strconv.Atoi(e.QueryParam("page"))
-// 	if err != nil {
-// 		page = 1
-// 	}
+	categoryIdStr := e.QueryParam("category_id")
+	if categoryIdStr == "" {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid category_id parameter"))
+	}
 
-// 	filter.Page = page
-// 	limit, err := strconv.Atoi(e.QueryParam("per_page"))
-// 	if err != nil {
-// 		limit = 10
-// 	}
-// 	filter.Limit = limit
+	categoryId, err := strconv.ParseInt(categoryIdStr, 10, 64)
+	if err != nil || categoryId <= 0 {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("failed convert catgeory_id"))
 
-// 	soal, totalPage, totalData, err := h.service.GetSoal(ctx, filter)
-// 	if err != nil {
-// 		return https.WriteServerErrorResponse(e, fName, err)
-// 	}
+	}
 
-// 	// Build the response
-// 	response := map[string]interface{}{
-// 		"data":       soal,
-// 		"total_page": totalPage,
-// 		"total_data": totalData,
-// 	}
+	type reqBody struct {
+		Category string `json:"category"`
+	}
 
-// 	return e.JSON(http.StatusOK, response)
-// }
+	req := reqBody{}
+
+	if err := e.Bind(&req); err != nil {
+		return https.WriteBadRequestResponse(e, https.ResponseBadRequestError)
+	}
+
+	// Validate request body
+	if err := validator.New().Struct(&req); err != nil {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, err)
+	}
+
+	resp := models.Category{
+		CategoryId: categoryId,
+		Category:   req.Category,
+	}
+
+	err = h.serviceCategory.UpdatedCategory(ctx, resp)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+	}
+	return https.WriteOkResponse(e, fmt.Sprintf("Berhasil updated category id %d", categoryId))
+
+}
+
+func (h *CategoryHandler) DeletedCategory(e echo.Context) error {
+	fName := "Category_handler.GetListCategory"
+	ctx := e.Request().Context()
+
+	categoryIdStr := e.QueryParam("category_id")
+	if categoryIdStr == "" {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid category_id parameter"))
+	}
+
+	categoryId, err := strconv.ParseInt(categoryIdStr, 10, 64)
+	if err != nil || categoryId <= 0 {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("failed convert catgeory_id"))
+
+	}
+
+	err = h.serviceCategory.DeletedCategory(ctx, categoryId)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+	}
+	return https.WriteOkResponse(e, fmt.Sprintf("Berhasil deleted category dengan id %d", categoryId))
+}

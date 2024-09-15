@@ -3,16 +3,17 @@ package categoryservice
 import (
 	repository "bank_soal/api/category/category_repository"
 	"bank_soal/models"
+	"context"
 	"fmt"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 type CategoryService interface {
 	CreateCategory(ctx context.Context, ct models.Category) (id int64, err error)
 	GetCategoryByID(ctx context.Context, id int64) (ct models.Category, err error)
 	GetAllCategory(ctx context.Context, filter models.FilterCategory) (ct []models.Category, totalData int64, err error)
+	UpdatedCategory(ctx context.Context, ct models.Category) (err error)
+	DeletedCategory(ctx context.Context, id int64) error
 }
 
 type CategoryServiceImpl struct {
@@ -78,4 +79,22 @@ func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.
 		}
 	}
 	return resp, totalData, nil
+}
+
+func (s *CategoryServiceImpl) UpdatedCategory(ctx context.Context, ct models.Category) (err error) {
+	err = s.categoryRepo.UpdateCategory(ctx, ct)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *CategoryServiceImpl) DeletedCategory(ctx context.Context, id int64) error {
+	err := s.categoryRepo.DeletedCategory(ctx, id)
+	if err != nil {
+		return fmt.Errorf("gagal get function from repository")
+	}
+
+	return nil
 }

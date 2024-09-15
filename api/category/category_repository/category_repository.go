@@ -28,7 +28,11 @@ const (
 	`
 
 	queryUpdateCategory = `
-		update into categories(category =$1) from categories where category_id= $1 and deleted_at is null
+		UPDATE categories SET category= $1 , updated_at= $2 where category_id= $3 and deleted_at is null
+	`
+
+	queryDeleteCategory = `
+		UPDATE categories SET deleted_at =$1 where category_id= $2 and deleted_at is null
 	`
 )
 
@@ -36,7 +40,9 @@ type CategoryRepository interface {
 	CreateCategory(ctx context.Context, ct models.Category) (id int64, err error)
 	GetCategoryByID(ctx context.Context, id int64) (ct models.Category, err error)
 	GetListCategory(ctx context.Context, searchCriteria map[string]interface{}) (ct []models.Category, err error)
+	UpdateCategory(ctx context.Context, ct models.Category) (err error)
 	CountUser(ctx context.Context, params map[string]interface{}) (count int64, err error)
+	DeletedCategory(ctx context.Context, id int64) error
 }
 
 type CategoryRepositoryImpl struct {
@@ -114,4 +120,24 @@ func (r *CategoryRepositoryImpl) CountUser(ctx context.Context, params map[strin
 		return 0, err
 	}
 	return count, nil
+}
+
+func (r *CategoryRepositoryImpl) UpdateCategory(ctx context.Context, ct models.Category) (err error) {
+	updatedAt := time.Now()
+	_, err = r.db.ExecContext(ctx, queryUpdateCategory, ct.Category, updatedAt, ct.CategoryId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *CategoryRepositoryImpl) DeletedCategory(ctx context.Context, id int64) error {
+	deletedAt := time.Now()
+
+	_, err := r.db.ExecContext(ctx, queryDeleteCategory, deletedAt, id)
+	if err != nil {
+		return fmt.Errorf("fail get query")
+	}
+	return nil
 }
