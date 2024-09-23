@@ -18,14 +18,13 @@ const (
 	queryGetPoint = `
 	SELECT sum(point)
 	FROM rangkings
-	WHERE user_id = $1 AND deleted_at IS NULL;
-
+	WHERE user_id = $1 and next = true AND deleted_at IS NULL;
 	`
 
 	queryGetUserAndPoint = `
 	WITH UserPoints AS (
 		SELECT user_id, SUM(point) AS total_points 
-		FROM rangkings 
+		FROM rangkings and next = 'true' 
 		WHERE deleted_at IS NULL
 		GROUP BY user_id
 	)
@@ -33,12 +32,17 @@ const (
 	FROM UserPoints up
 	JOIN users u ON u.user_id  = up.user_id;
 	`
+
+	queryUpdateNext = `
+		UPDATE rangkings SET next = true, updated_at = $1 where user_id = $2 and soal_id= $3 and deleted_at is null
+	`
 )
 
 type RangkingRepository interface {
 	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
 	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
 	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
+	UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error)
 }
 
 type RangkingRepositoryImpl struct {
@@ -112,4 +116,15 @@ func (r *RangkingRepositoryImpl) GetUserAndPoint(ctx context.Context) (rank []mo
 	}
 
 	return rank, nil
+}
+
+func (r *RangkingRepositoryImpl) UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error) {
+	updatedAt := time.Now()
+
+	_, err = r.db.ExecContext(ctx, queryUpdateNext, updatedAt, rank.UserId, rank.SoalId)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
