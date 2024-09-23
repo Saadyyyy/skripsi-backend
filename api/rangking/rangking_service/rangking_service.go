@@ -14,6 +14,7 @@ type RangkingService interface {
 	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
 	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
 	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
+	UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error)
 }
 
 type RangkingServiceImpl struct {
@@ -80,4 +81,13 @@ func (s *RangkingServiceImpl) GetUserAndPoint(ctx context.Context) (rank []model
 		return nil, fmt.Errorf("Gagal get GetUserAndPoint : ", err)
 	}
 	return rank, nil
+}
+
+func (s *RangkingServiceImpl) UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error) {
+	id, err = s.repoRank.UpdateNextUser(ctx, rank)
+	if err != nil {
+		return 0, fmt.Errorf("gagal get UpdateNextUser +%v :", err)
+	}
+
+	return id, nil
 }
