@@ -16,16 +16,29 @@ const (
 	`
 
 	queryGetPoint = `
-	SELECT COALESCE(SUM((point + point) - point), 0) AS total_points
-FROM rangkings
-WHERE user_id = $1 AND deleted_at IS NULL;
+	SELECT sum(point)
+	FROM rangkings
+	WHERE user_id = $1 AND deleted_at IS NULL;
 
+	`
+
+	queryGetUserAndPoint = `
+	WITH UserPoints AS (
+		SELECT user_id, SUM(point) AS total_points 
+		FROM rangkings 
+		WHERE deleted_at IS NULL
+		GROUP BY user_id
+	)
+	SELECT u.user_id, u.username, u.profile, up.total_points
+	FROM UserPoints up
+	JOIN users u ON u.user_id  = up.user_id;
 	`
 )
 
 type RangkingRepository interface {
 	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
 	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
+	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
 }
 
 type RangkingRepositoryImpl struct {
@@ -47,17 +60,6 @@ func (r *RangkingRepositoryImpl) CreateRangking(ctx context.Context, rank models
 
 }
 
-// // GetPointByUserId implements RangkingRepository.
-// func (r *RangkingRepositoryImpl) GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error) {
-
-// 	err = r.db.QueryRowContext(ctx, queryGetPoint, id).Scan(&rank.Point)
-// 	if err != nil {
-// 		err = fmt.Errorf("queryGetPoint err%+v", err)
-// 		return
-// 	}
-// 	return rank, nil
-// }
-
 func (r *RangkingRepositoryImpl) GetPointByUserId(ctx context.Context, id int64) (models.Rangking, error) {
 	var totalPoints sql.NullInt64
 	err := r.db.QueryRowContext(ctx, queryGetPoint, id).Scan(&totalPoints)
@@ -76,6 +78,37 @@ func (r *RangkingRepositoryImpl) GetPointByUserId(ctx context.Context, id int64)
 
 	rank := models.Rangking{
 		Point: points,
+	}
+
+	return rank, nil
+}
+
+func (r *RangkingRepositoryImpl) GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error) {
+	rows, err := r.db.QueryContext(ctx, queryGetUserAndPoint)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			err = fmt.Errorf("queryGetSoal err: %+v", err)
+			return
+		}
+		err = nil
+		return
+	}
+	defer rows.Close()
+
+	var s models.RangkingUser
+
+	for rows.Next() {
+		err = rows.Scan(&s.UserId, &s.Username, &s.Profile, &s.Point)
+		if err != nil {
+			err = fmt.Errorf("row scan err: %+v", err)
+			return nil, err
+		}
+		rank = append(rank, s)
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("rows iteration err: %+v", err)
+		return nil, err
 	}
 
 	return rank, nil

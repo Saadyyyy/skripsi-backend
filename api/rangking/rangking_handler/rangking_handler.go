@@ -5,6 +5,7 @@ import (
 	"bank_soal/models"
 	"bank_soal/utils/https"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
@@ -83,4 +84,37 @@ func (h *RangkingHandlerImpl) GetPointByUserId(e echo.Context) error {
 	}
 
 	return https.WriteOkResponse(e, resp)
+}
+
+func (h *RangkingHandlerImpl) GetUserAndPoint(e echo.Context) error {
+	fName := "rangking_handler.GetUserAndPoint"
+	ctx := e.Request().Context()
+
+	result, err := h.service.GetUserAndPoint(ctx)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+	}
+
+	var response []struct {
+		UserId   int64  `json:"user_id"`
+		Point    int64  `json:"point"`
+		Username string `json:"username"`
+		Profile  string `json:"profile"`
+	}
+
+	for _, v := range result {
+		response = append(response, struct {
+			UserId   int64  `json:"user_id"`
+			Point    int64  `json:"point"`
+			Username string `json:"username"`
+			Profile  string `json:"profile"`
+		}{
+			UserId:   v.UserId,
+			Point:    v.Point,
+			Username: v.Username,
+			Profile:  v.Profile,
+		})
+	}
+	return e.JSON(http.StatusOK, response)
+
 }

@@ -13,6 +13,7 @@ import (
 type RangkingService interface {
 	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
 	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
+	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
 }
 
 type RangkingServiceImpl struct {
@@ -70,5 +71,13 @@ func (s *RangkingServiceImpl) GetPointByUserId(ctx context.Context, id int64) (r
 	// hasil := (rank.Point + rank.Point) - rank.Point
 	// rank.Point = hasil
 
+	return rank, nil
+}
+
+func (s *RangkingServiceImpl) GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error) {
+	rank, err = s.repoRank.GetUserAndPoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Gagal get GetUserAndPoint : ", err)
+	}
 	return rank, nil
 }
