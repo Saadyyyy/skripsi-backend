@@ -116,5 +116,39 @@ func (h *RangkingHandlerImpl) GetUserAndPoint(e echo.Context) error {
 		})
 	}
 	return e.JSON(http.StatusOK, response)
+}
+
+func (h *RangkingHandlerImpl) UpdateNextUser(e echo.Context) error {
+	fName := "rangking_handler.UpdateNextUser"
+	ctx := e.Request().Context()
+	userIdStr := e.QueryParam("user_id")
+	if userIdStr == "" {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid category_id parameter"))
+	}
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	if err != nil {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("invalid category_id parameter"))
+	}
+
+	soalIdStr := e.QueryParam("soal_id")
+	if soalIdStr == "" {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("missing or invalid category_id parameter"))
+	}
+	soalId, err := strconv.ParseInt(soalIdStr, 10, 64)
+	if err != nil {
+		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, fmt.Errorf("invalid category_id parameter"))
+	}
+
+	rank := models.Rangking{
+		UserId: userId,
+		SoalId: soalId,
+	}
+
+	userId, err = h.service.UpdateNextUser(ctx, rank)
+	if err != nil {
+		return https.WriteServerErrorResponse(e, fName, err)
+
+	}
+	return https.WriteOkResponse(e, fmt.Sprintf("Berhasil update ranking %d", userId))
 
 }
