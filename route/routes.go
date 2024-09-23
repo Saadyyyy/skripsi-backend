@@ -64,8 +64,9 @@ func Register(db *sqlx.DB, echo *echo.Echo) {
 	handlerRank := rangkinghandler.NewRangkingHandler(serviceRank)
 	//route
 	rank := echo.Group("/rank")
+	rank.GET("/", handlerRank.GetUserAndPoint, middleware.JWTMiddleware())
 	rank.POST("/create", handlerRank.CreateRangking, middleware.JWTMiddleware())
 	rank.GET("/point", handlerRank.GetPointByUserId, middleware.JWTMiddleware())
-	rank.GET("/", handlerRank.GetUserAndPoint, middleware.JWTMiddleware())
+	rank.POST("/update", handlerRank.UpdateNextUser, middleware.JWTMiddleware())
 
 }
