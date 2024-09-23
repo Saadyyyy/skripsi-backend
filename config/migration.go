@@ -25,4 +25,10 @@ func DBMigration(db *gorm.DB) {
 	if err != nil {
 		log.Fatalf("Failed to migrate Users: %v", err)
 	}
+
+	// Migrate Rangkings
+	err = db.AutoMigrate(&models.Rangking{})
+	if err != nil {
+		log.Fatalf("Failed to migrate Users: %v", err)
+	}
 }
