@@ -18,23 +18,28 @@ const (
 	queryGetPoint = `
 	SELECT sum(point)
 	FROM rangkings
-	WHERE user_id = $1 and next = true AND deleted_at IS NULL;
+	WHERE user_id = $1 and next = true AND deleted_at IS NULL
 	`
 
 	queryGetUserAndPoint = `
 	WITH UserPoints AS (
 		SELECT user_id, SUM(point) AS total_points 
-		FROM rangkings and next = 'true' 
-		WHERE deleted_at IS NULL
+		FROM rangkings 
+		WHERE deleted_at IS NULL and next = 'true' 
+
+		
 		GROUP BY user_id
 	)
 	SELECT u.user_id, u.username, u.profile, up.total_points
 	FROM UserPoints up
-	JOIN users u ON u.user_id  = up.user_id;
+	JOIN users u ON u.user_id  = up.user_id
 	`
 
 	queryUpdateNext = `
 		UPDATE rangkings SET next = true, updated_at = $1 where user_id = $2 and soal_id= $3 and deleted_at is null
+	`
+	queryCheckingRank = `
+		select rangking_id,user_id,soal_id,category_id,next from rangkings where user_id= $1 and soal_id=$2 and category_id=$3 and deleted_at is null
 	`
 )
 
@@ -43,6 +48,7 @@ type RangkingRepository interface {
 	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
 	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
 	UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error)
+	CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error)
 }
 
 type RangkingRepositoryImpl struct {
@@ -61,7 +67,6 @@ func (r *RangkingRepositoryImpl) CreateRangking(ctx context.Context, rank models
 		return
 	}
 	return id, nil
-
 }
 
 func (r *RangkingRepositoryImpl) GetPointByUserId(ctx context.Context, id int64) (models.Rangking, error) {
@@ -127,4 +132,21 @@ func (r *RangkingRepositoryImpl) UpdateNextUser(ctx context.Context, rank models
 	}
 
 	return id, nil
+}
+
+func (r *RangkingRepositoryImpl) CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error) {
+
+	row := r.db.QueryRowContext(ctx, queryCheckingRank, userId, soalId, categoryId)
+
+	err = row.Scan(&check.RangkingId, &check.UserId, &check.SoalId, &check.CategoryId, &check.Next)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return check, nil
+		}
+
+		err = fmt.Errorf("row scan err: %+v", err)
+		return
+	}
+
+	return check, nil
 }
