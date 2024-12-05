@@ -33,6 +33,7 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 		JawabanB     string `json:"jawaban_b"`
 		JawabanC     string `json:"jawaban_c"`
 		JawabanD     string `json:"jawaban_d"`
+		JawabanE     string `json:"jawaban_e"`
 		JawabanBenar string `json:"jawaban_benar"`
 	}
 
@@ -44,6 +45,7 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 
 	// Validate request body
 	if err := validator.New().Struct(&req); err != nil {
+
 		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, err)
 	}
 
@@ -55,6 +57,7 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 		JawabanB:     req.JawabanB,
 		JawabanC:     req.JawabanC,
 		JawabanD:     req.JawabanD,
+		JawabanE:     req.JawabanE,
 		JawabanBenar: req.JawabanBenar,
 	}
 
@@ -82,7 +85,6 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
 
-	// fmt.Println(soal)
 	// Build the response
 	response := map[string]interface{}{
 		"data":       soal,
@@ -114,6 +116,7 @@ func (h *SoalHandler) UpdateSoal(e echo.Context) error {
 		JawabanB     string `json:"jawaban_b"`
 		JawabanC     string `json:"jawaban_c"`
 		JawabanD     string `json:"jawaban_d"`
+		JawabanE     string `json:"jawaban_e"`
 		JawabanBenar string `json:"jawaban_benar"`
 	}
 	req := reqBody{}
@@ -137,11 +140,13 @@ func (h *SoalHandler) UpdateSoal(e echo.Context) error {
 		JawabanB:     req.JawabanB,
 		JawabanC:     req.JawabanC,
 		JawabanD:     req.JawabanD,
+		JawabanE:     req.JawabanE,
 		JawabanBenar: req.JawabanBenar,
 	}
 
 	// Call the service to update the soal
 	err = h.service.UpdateSoal(ctx, resp)
+	fmt.Println("errorrr handler", err)
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}

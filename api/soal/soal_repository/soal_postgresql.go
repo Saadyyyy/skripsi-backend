@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	queryInsertSoal = `insert into soals (category_id,soal,jawaban_a,jawaban_b,jawaban_c,jawaban_d,jawaban_benar,created_at)
-				values($1,$2,$3,$4,$5,$6,$7,$8) returning soal_id`
+	queryInsertSoal = `insert into soals (category_id,soal,jawaban_a,jawaban_b,jawaban_c,jawaban_d,jawaban_e,jawaban_benar,created_at)
+				values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning soal_id`
 
 	queryGetSoal = `
 	SELECT 
@@ -24,6 +24,7 @@ const (
     soals.jawaban_b, 
     soals.jawaban_c, 
     soals.jawaban_d, 
+	soals.jawaban_e, 
     soals.jawaban_benar, 
     soals.created_at
 FROM soals
@@ -52,9 +53,10 @@ WHERE
 			jawaban_b = $4,
 			jawaban_c = $5,
 			jawaban_d = $6,
-			jawaban_benar = $7,
-			updated_at = $8
-		WHERE soal_id = $9 AND deleted_at IS NULL
+			jawaban_d = $7,
+			jawaban_benar = $8,
+			updated_at = $9
+		WHERE soal_id = $10 AND deleted_at IS NULL
 	`
 
 	queryDeleteSoal = `
@@ -65,7 +67,7 @@ WHERE
 	`
 
 	queryGetSoalById = `
-		select soal_id, category_id,soal,jawaban_a,jawaban_b,jawaban_c,jawaban_d,jawaban_benar,created_at from soals
+		select soal_id, category_id,soal,jawaban_a,jawaban_b,jawaban_c,jawaban_d,jawaban_e,jawaban_benar,created_at from soals
 		 where soal_id =$1 and
 		deleted_at is null
 	`
@@ -89,8 +91,23 @@ func NewSoalRepository(db *sqlx.DB) SoalRepositoryInterface {
 }
 
 func (r *SoalRepositoryImpl) CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error) {
+
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		fmt.Printf("Failed to load location: %+v\n", err)
+		return
+	}
+
+	// Cetak waktu sekarang dalam sistem timezone dan WIB
+	fmt.Println("System Time:", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Println("Time in Asia/Jakarta:", time.Now().In(loc).Format("2006-01-02 15:04:05"))
+
+	fmt.Print("time ", time.Now())
+	// Get current time in Indonesia timezone
 	created_at := time.Now()
-	err = r.db.QueryRowContext(ctx, queryInsertSoal, soal.CategoryId, soal.Soal, soal.JawabanA, soal.JawabanB, soal.JawabanC, soal.JawabanD, soal.JawabanBenar, created_at).Scan(&ID)
+
+	fmt.Println("created_at", created_at)
+	err = r.db.QueryRowContext(ctx, queryInsertSoal, soal.CategoryId, soal.Soal, soal.JawabanA, soal.JawabanB, soal.JawabanC, soal.JawabanD, soal.JawabanE, soal.JawabanBenar, created_at).Scan(&ID)
 	if err != nil {
 		err = fmt.Errorf("queryInsertSoal err%+v", err)
 		return
@@ -117,7 +134,7 @@ func (r *SoalRepositoryImpl) GetSoal(ctx context.Context, searchCriteria map[str
 
 	for rows.Next() {
 		var s models.Soals
-		err = rows.Scan(&s.SoalId, &s.CategoryId, &ct.Category, &s.Soal, &s.JawabanA, &s.JawabanB, &s.JawabanC, &s.JawabanD, &s.JawabanBenar, &s.CreatedAt)
+		err = rows.Scan(&s.SoalId, &s.CategoryId, &ct.Category, &s.Soal, &s.JawabanA, &s.JawabanB, &s.JawabanC, &s.JawabanD, &s.JawabanE, &s.JawabanBenar, &s.CreatedAt)
 		if err != nil {
 			err = fmt.Errorf("row scan err: %+v", err)
 			return nil, err
@@ -135,7 +152,7 @@ func (r *SoalRepositoryImpl) GetSoal(ctx context.Context, searchCriteria map[str
 
 func (r *SoalRepositoryImpl) UpdateSoal(ctx context.Context, soal models.Soals) error {
 	updated_at := time.Now()
-	_, err := r.db.ExecContext(ctx, queryUpdateSoal, soal.CategoryId, soal.Soal, soal.JawabanA, soal.JawabanB, soal.JawabanC, soal.JawabanD, soal.JawabanBenar, updated_at, soal.SoalId)
+	_, err := r.db.ExecContext(ctx, queryUpdateSoal, soal.CategoryId, soal.Soal, soal.JawabanA, soal.JawabanB, soal.JawabanC, soal.JawabanD, soal.JawabanE, soal.JawabanBenar, updated_at, soal.SoalId)
 	if err != nil {
 		err = fmt.Errorf("UpdateSoal err%+v", err)
 		return err
@@ -175,6 +192,7 @@ func (r *SoalRepositoryImpl) GetSoalById(ctx context.Context, id int64) (soal mo
 		&soal.JawabanB,
 		&soal.JawabanC,
 		&soal.JawabanD,
+		&soal.JawabanE,
 		&soal.JawabanBenar,
 		&soal.CreatedAt,
 	)

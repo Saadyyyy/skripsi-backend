@@ -31,7 +31,7 @@ func NewSoalService(repo repository.SoalRepositoryInterface, db *sqlx.DB) SoalSe
 }
 
 func (s *SoalServiceImpl) CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error) {
-	if soal.Soal == "" || soal.JawabanB == "" || soal.JawabanD == "" || soal.JawabanA == "" || soal.JawabanC == "" || soal.JawabanBenar == "" {
+	if soal.Soal == "" || soal.JawabanB == "" || soal.JawabanD == "" || soal.JawabanA == "" || soal.JawabanC == "" || soal.JawabanE == "" || soal.JawabanBenar == "" {
 		return 0, fmt.Errorf("tidak boleh kosong harus di isi")
 	}
 
@@ -79,12 +79,11 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 			JawabanB:     s.JawabanB,
 			JawabanC:     s.JawabanC,
 			JawabanD:     s.JawabanD,
+			JawabanE:     s.JawabanE,
 			JawabanBenar: s.JawabanBenar,
 			CreatedAt:    s.CreatedAt,
 		}
 	}
-
-	// fmt.Println("print data", resp)
 
 	return resp, totalData, nil
 }
