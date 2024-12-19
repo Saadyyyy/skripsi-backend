@@ -2,24 +2,41 @@ package chat_bot
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 )
 
-type ChatBotHandler struct{}
-
-func NewChatBotHandler() *ChatBotHandler {
-	return &ChatBotHandler{}
+type ChatBotHandler struct {
+	RDB *redis.Client
 }
+
+func NewChatBotHandler(rdb *redis.Client) *ChatBotHandler {
+	return &ChatBotHandler{RDB: rdb}
+}
+
+var ctx = context.Background()
 
 func (h *ChatBotHandler) ChatSoalHandler(c echo.Context) error {
 	soalID := c.Param("id")
+	cacheKey := fmt.Sprintf("soal:%s", soalID)
+
+	cachedData, err := h.RDB.Get(ctx, cacheKey).Result()
+	if err == nil {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"penjelasan": cachedData,
+			"source":     "hasil dari redis",
+		})
+	}
+
 	apiURL := fmt.Sprintf("http://localhost:8080/soal/detail?soal_id=%s", soalID)
 
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -55,6 +72,7 @@ func (h *ChatBotHandler) ChatSoalHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Invalid API response structure"})
 	}
 
+	// Generate prompt
 	soal, soalOk := data["Soal"].(string)
 	jawabanA, jawabanAOk := data["JawabanA"].(string)
 	jawabanB, jawabanBOk := data["JawabanB"].(string)
@@ -67,7 +85,6 @@ func (h *ChatBotHandler) ChatSoalHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Incomplete soal data"})
 	}
 
-	// Susun prompt dengan jawaban benar terlebih dahulu, baru penjelasan soal
 	prompt := fmt.Sprintf(
 		"Pilihlah Jawaban yang benar terlebih dahulu dari opsi A, B, C, D, dan E tanpa menjelaskan jawaban yang salah: %s\n\nJelaskan soal berikut tanpa menjelaskan jawaban yang salah:\n%s\n\nA. %s\nB. %s\nC. %s\nD. %s\nE. %s",
 		jawabanBenar, soal, jawabanA, jawabanB, jawabanC, jawabanD, jawabanE,
@@ -78,9 +95,15 @@ func (h *ChatBotHandler) ChatSoalHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to communicate with OpenAI API"})
 	}
 
+	// Simpan hasil ke Redis dengan TTL 5 menit
+	err = h.RDB.Set(ctx, cacheKey, chatGPTResponse, 5*time.Minute).Err()
+	if err != nil {
+		fmt.Println("Failed to store in Redis:", err)
+	}
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		// "soal":       data,
 		"penjelasan": chatGPTResponse,
+		"source":     "dari api",
 	})
 }
 
@@ -107,7 +130,7 @@ func callOpenAI(prompt string) (string, error) {
 			},
 		},
 		"temperature": 1.0,
-		"max_tokens":  150,
+		"max_tokens":  300,
 	})
 
 	req, err := http.NewRequest("POST", openAIURL, ioutil.NopCloser(bytes.NewReader(requestBody)))
