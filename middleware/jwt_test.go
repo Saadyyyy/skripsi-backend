@@ -20,8 +20,8 @@ func TestAdminMiddleware(t *testing.T) {
 
 	// Create a valid token with admin role
 	claims := &YourCustomClaims{
-		ID:   1,
-		Role: 2, // Admin role
+		UserId: 1,
+		Role:   2, // Admin role
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 5)), // Set token expiry
 		},

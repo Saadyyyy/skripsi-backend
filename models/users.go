@@ -7,7 +7,9 @@ type Users struct {
 	Email     string
 	Role      int64
 	Token     string
+	Profile   string
 	CreatedAt string
+	CreatedBy string
 	UpdatedAt string
 	DeletedAt string
 }
@@ -18,6 +20,7 @@ type UsersRespon struct {
 	Password string
 	Email    string
 	Role     int64
+	Profile  string
 }
 
 type FilterUser struct {

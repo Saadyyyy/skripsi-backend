@@ -1,9 +1,7 @@
 package rangkingservice
 
 import (
-	categoryrepository "bank_soal/api/category/category_repository"
 	rangkingrepository "bank_soal/api/rangking/rangking_repository"
-	"bank_soal/api/soal/soal_repository"
 	repository "bank_soal/api/user/user_repository"
 	"bank_soal/models"
 	"context"
@@ -11,104 +9,78 @@ import (
 )
 
 type RangkingService interface {
-	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
-	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
-	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
-	UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error)
-	CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error)
+	CreateRank(ctx context.Context, rank models.Rangking) (ID int64, err error)
+	UpdatedRank(ctx context.Context, rank models.Rangking) (ID int64, err error)
+	CheckRank(ctx context.Context, ID int64) (result []models.Rangking, err error)
+	GetRank(ctx context.Context, rank models.RangkingRes) (result []models.RangkingRes, err error)
 }
 
 type RangkingServiceImpl struct {
-	repoRank     rangkingrepository.RangkingRepository
-	repoSoal     soal_repository.SoalRepositoryInterface
-	repoCategory categoryrepository.CategoryRepository
-	repoUser     repository.UserRepositoryInterface
+	repo     rangkingrepository.RangkingRepository
+	repoUser repository.UserRepositoryInterface
 }
 
-func NewRangkingService(
-	repoRank rangkingrepository.RangkingRepository,
-	repoSoal soal_repository.SoalRepositoryInterface,
-	repoCategory categoryrepository.CategoryRepository,
-	repoUser repository.UserRepositoryInterface) RangkingService {
-	return &RangkingServiceImpl{repoRank: repoRank, repoSoal: repoSoal, repoCategory: repoCategory, repoUser: repoUser}
-}
-func (s *RangkingServiceImpl) CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error) {
-	// Check if the category exists
-	ctId, err := s.repoCategory.GetCategoryByID(ctx, rank.CategoryId)
+func (r *RangkingServiceImpl) CheckRank(ctx context.Context, ID int64) (result []models.Rangking, err error) {
+	result, err = r.repo.CheckRank(ctx, ID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get GetCategoryByID: %w", err)
+		return []models.Rangking{}, fmt.Errorf("gagal memanggil repositry error :", err)
 	}
 
-	// Check if the soal exists
-	soalId, err := s.repoSoal.GetSoalById(ctx, rank.SoalId)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get GetSoalById: %w", err)
-	}
-
-	// Check if the user exists
-	uId, err := s.repoUser.GetUserByID(ctx, rank.UserId)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get GetUserByID: %w", err)
-	}
-
-	// // Check if the rank with the same userId, soalId, and categoryId already exists
-	// checkRank, err := s.repoRank.CheckingRank(ctx, uId.UserId, soalId.SoalId, ctId.CategoryId)
-	// if err != nil {
-	// 	return 0, fmt.Errorf("failed to check existing rank: %w", err)
-	// }
-	// if checkRank.RangkingId != 0 { // If a rank exists
-	// 	return 0, fmt.Errorf("failed: UserId, SoalId, and CategoryId combination already exists")
-	// }
-
-	// Prepare the ranking response
-	resp := models.Rangking{
-		UserId:     uId.UserId,
-		CategoryId: ctId.CategoryId,
-		SoalId:     soalId.SoalId,
-		Point:      100,
-		Next:       false,
-	}
-
-	// Create the ranking
-	id, err = s.repoRank.CreateRangking(ctx, resp)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create CreateRangking: %w", err)
-	}
-
-	return id, nil
+	return result, nil
 }
 
-func (s *RangkingServiceImpl) GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error) {
-	rank, err = s.repoRank.GetPointByUserId(ctx, id)
-	if err != nil {
-		return models.Rangking{}, fmt.Errorf("failed to create CreateRangking: %w", err)
+func (r *RangkingServiceImpl) CreateRank(ctx context.Context, rank models.Rangking) (ID int64, err error) {
+	check, err2 := r.repo.CheckRank(ctx, rank.UserId)
+	if err2 != nil {
+		return 0, fmt.Errorf("gagal get function checkrank dari repository", err2)
 	}
 
-	return rank, nil
+	for _, v := range check {
+		if v.CategoryId == rank.CategoryId && v.UserId == rank.UserId {
+			if v.Point < rank.Point {
+				ID, err = r.repo.UpdatedRank(ctx, rank)
+				if err != nil {
+					return 0, fmt.Errorf("gagal menjalankan fungsi UpdateRank dari repository: %w", err)
+				}
+				return v.RankId, nil
+			}
+			return v.RankId, nil
+		}
+	}
+	ID, err = r.repo.CreateRank(ctx, rank)
+
+	if err != nil {
+		return 0, fmt.Errorf("Gagal mendapatkan mendapatkan fungsi dari reposiotry create rank error :", err)
+	}
+	return ID, nil
 }
 
-func (s *RangkingServiceImpl) GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error) {
-	rank, err = s.repoRank.GetUserAndPoint(ctx)
+func (r *RangkingServiceImpl) GetRank(ctx context.Context, rank models.RangkingRes) (result []models.RangkingRes, err error) {
+
+	result, err = r.repo.GetRank(ctx, rank)
 	if err != nil {
-		return nil, fmt.Errorf("Gagal get GetUserAndPoint %d :", err)
+		return []models.RangkingRes{}, fmt.Errorf("Gagal mendapatkan mendapatkan fungsi dari reposiotry create rank error :", err)
 	}
-	return rank, nil
+
+	nilai := int64(100)
+
+	for i := range result {
+		result[i].Point = result[i].Point * nilai
+	}
+
+	return result, nil
 }
 
-func (s *RangkingServiceImpl) UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error) {
-	id, err = s.repoRank.UpdateNextUser(ctx, rank)
+func (r *RangkingServiceImpl) UpdatedRank(ctx context.Context, rank models.Rangking) (ID int64, err error) {
+
+	ID, err = r.repo.UpdatedRank(ctx, rank)
 	if err != nil {
-		return 0, fmt.Errorf("gagal get UpdateNextUser")
+		return 0, fmt.Errorf("Gagal mendapatkan update rank dari repository error :", err)
 	}
 
-	return id, nil
+	return ID, nil
 }
 
-func (s *RangkingServiceImpl) CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error) {
-	check, err = s.repoRank.CheckingRank(ctx, userId, soalId, categoryId)
-	if err != nil {
-		return models.CheckRank{}, fmt.Errorf("Gagal get GetUserAndPoint %d :", err)
-	}
-	return check, nil
-
+func NewRangkingService(repo rangkingrepository.RangkingRepository, repoUser repository.UserRepositoryInterface) RangkingService {
+	return &RangkingServiceImpl{repo: repo, repoUser: repoUser}
 }

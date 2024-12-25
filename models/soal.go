@@ -8,6 +8,7 @@ type Soals struct {
 	JawabanB     string
 	JawabanC     string
 	JawabanD     string
+	JawabanE     string
 	JawabanBenar string
 	CreatedAt    string
 	UpdatedAt    string
@@ -21,4 +22,19 @@ type FilterSoal struct {
 	TglSelesai string
 	Keyword    string
 	Category   int64
+}
+
+type SoalExsample struct {
+	SoalId       int64 `gorm:"primaryKey;autoIncrement:true"`
+	CategoryId   int64
+	Soal         string
+	JawabanA     string
+	JawabanB     string
+	JawabanC     string
+	JawabanD     string
+	JawabanE     string
+	JawabanBenar string
+	CreatedAt    string
+	UpdatedAt    string
+	DeletedAt    string
 }

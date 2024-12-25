@@ -11,44 +11,32 @@ import (
 )
 
 const (
-	queryCreateRangking = `
-		insert into rangkings(user_id,category_id,soal_id,point,next,created_at)values($1,$2,$3,$4,$5,$6)returning rangking_id
+	queryCreateRank = `
+		insert into rangkings(user_id,category_id,point,created_at)values($1,$2,$3,$4)returning rank_id
 	`
 
-	queryGetPoint = `
-	SELECT sum(point)
-	FROM rangkings
-	WHERE user_id = $1 and next = true AND deleted_at IS NULL
+	queryUpdateRank = `
+		update rangkings SET point=$1,updated_at =$2  where user_id= $3 and category_id=$4 and deleted_at is null
 	`
 
-	queryGetUserAndPoint = `
-	WITH UserPoints AS (
-		SELECT user_id, SUM(point) AS total_points 
-		FROM rangkings 
-		WHERE deleted_at IS NULL and next = 'true' 
+	queryCheckRank = `select rank_id,user_id,category_id,point from rangkings where user_id =$1 and deleted_at is null`
 
-		
-		GROUP BY user_id
-	)
-	SELECT u.user_id, u.username, u.profile, up.total_points
-	FROM UserPoints up
-	JOIN users u ON u.user_id  = up.user_id
-	`
-
-	queryUpdateNext = `
-		UPDATE rangkings SET next = true, updated_at = $1 where user_id = $2 and soal_id= $3 and deleted_at is null
-	`
-	queryCheckingRank = `
-		select rangking_id,user_id,soal_id,category_id,next from rangkings where user_id= $1 and soal_id=$2 and category_id=$3 and deleted_at is null
+	queryGetRank = `
+	SELECT rangkings.user_id, SUM(rangkings.point) AS total_points ,u.username  as username,u.profile as profile
+	FROM rangkings 
+	JOIN  users u  ON rangkings.user_id = u.user_id
+	WHERE rangkings.deleted_at IS NULL
+	GROUP BY rangkings.user_id ,u.username ,u.profile
+	ORDER BY total_points DESC
+	LIMIT 10;
 	`
 )
 
 type RangkingRepository interface {
-	CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error)
-	GetPointByUserId(ctx context.Context, id int64) (rank models.Rangking, err error)
-	GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error)
-	UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error)
-	CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error)
+	CreateRank(ctx context.Context, rank models.Rangking) (ID int64, err error)
+	UpdatedRank(ctx context.Context, rank models.Rangking) (ID int64, err error)
+	CheckRank(ctx context.Context, ID int64) (rank []models.Rangking, err error)
+	GetRank(ctx context.Context, rank models.RangkingRes) (result []models.RangkingRes, err error)
 }
 
 type RangkingRepositoryImpl struct {
@@ -59,41 +47,35 @@ func NewRangkingRepository(db *sqlx.DB) RangkingRepository {
 	return &RangkingRepositoryImpl{db: db}
 }
 
-func (r *RangkingRepositoryImpl) CreateRangking(ctx context.Context, rank models.Rangking) (id int64, err error) {
-	created_at := time.Now()
-	err = r.db.QueryRowContext(ctx, queryCreateRangking, rank.UserId, rank.CategoryId, rank.SoalId, rank.Point, rank.Next, created_at).Scan(&id)
+func (r *RangkingRepositoryImpl) CheckRank(ctx context.Context, ID int64) (result []models.Rangking, err error) {
+	rows, err := r.db.QueryContext(ctx, queryCheckRank, ID)
 	if err != nil {
-		err = fmt.Errorf("queryCreateRangking err%+v", err)
-		return
+		if err != sql.ErrNoRows {
+			err = fmt.Errorf("queryCheckRank err: %+v", err)
+			return
+		}
+		err = nil
 	}
-	return id, nil
+	defer rows.Close()
+	for rows.Next() {
+		rank := models.Rangking{}
+		err = rows.Scan(&rank.RankId, &rank.UserId, &rank.CategoryId, &rank.Point)
+		if err != nil {
+			err = fmt.Errorf("row scan err: %+v", err)
+			return nil, err
+		}
+		result = append(result, rank)
+	}
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("rows iteration err: %+v", err)
+		return nil, err
+	}
+
+	return result, nil
 }
 
-func (r *RangkingRepositoryImpl) GetPointByUserId(ctx context.Context, id int64) (models.Rangking, error) {
-	var totalPoints sql.NullInt64
-	err := r.db.QueryRowContext(ctx, queryGetPoint, id).Scan(&totalPoints)
-	if err != nil {
-		err = fmt.Errorf("queryGetPoint err%+v", err)
-		return models.Rangking{}, err
-	}
-
-	// Convert to int64 if valid, otherwise use 0
-	var points int64
-	if totalPoints.Valid {
-		points = totalPoints.Int64
-	} else {
-		points = 0
-	}
-
-	rank := models.Rangking{
-		Point: points,
-	}
-
-	return rank, nil
-}
-
-func (r *RangkingRepositoryImpl) GetUserAndPoint(ctx context.Context) (rank []models.RangkingUser, err error) {
-	rows, err := r.db.QueryContext(ctx, queryGetUserAndPoint)
+func (r *RangkingRepositoryImpl) GetRank(ctx context.Context, rank models.RangkingRes) (result []models.RangkingRes, err error) {
+	rows, err := r.db.QueryContext(ctx, queryGetRank)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			err = fmt.Errorf("queryGetSoal err: %+v", err)
@@ -103,50 +85,40 @@ func (r *RangkingRepositoryImpl) GetUserAndPoint(ctx context.Context) (rank []mo
 		return
 	}
 	defer rows.Close()
-
-	var s models.RangkingUser
-
 	for rows.Next() {
-		err = rows.Scan(&s.UserId, &s.Username, &s.Profile, &s.Point)
+		err = rows.Scan(&rank.UserId, &rank.Point, &rank.Username, &rank.Profile)
 		if err != nil {
 			err = fmt.Errorf("row scan err: %+v", err)
 			return nil, err
 		}
-		rank = append(rank, s)
+		result = append(result, rank)
 	}
-
 	if err = rows.Err(); err != nil {
 		err = fmt.Errorf("rows iteration err: %+v", err)
 		return nil, err
 	}
 
-	return rank, nil
+	return result, nil
 }
 
-func (r *RangkingRepositoryImpl) UpdateNextUser(ctx context.Context, rank models.Rangking) (id int64, err error) {
+func (r *RangkingRepositoryImpl) UpdatedRank(ctx context.Context, rank models.Rangking) (ID int64, err error) {
 	updatedAt := time.Now()
 
-	_, err = r.db.ExecContext(ctx, queryUpdateNext, updatedAt, rank.UserId, rank.SoalId)
+	_, err = r.db.ExecContext(ctx, queryUpdateRank, rank.Point, updatedAt, rank.UserId, rank.CategoryId)
 	if err != nil {
-		return 0, err
-	}
+		fmt.Errorf("Query Updated Rank Error :", err)
 
-	return id, nil
+	}
+	return ID, nil
 }
 
-func (r *RangkingRepositoryImpl) CheckingRank(ctx context.Context, userId, soalId, categoryId int64) (check models.CheckRank, err error) {
-
-	row := r.db.QueryRowContext(ctx, queryCheckingRank, userId, soalId, categoryId)
-
-	err = row.Scan(&check.RangkingId, &check.UserId, &check.SoalId, &check.CategoryId, &check.Next)
+func (r *RangkingRepositoryImpl) CreateRank(ctx context.Context, rank models.Rangking) (ID int64, err error) {
+	createdAt := time.Now()
+	err = r.db.QueryRowContext(ctx, queryCreateRank, rank.UserId, rank.CategoryId, rank.Point, createdAt).Scan(&ID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return check, nil
-		}
-
-		err = fmt.Errorf("row scan err: %+v", err)
+		err = fmt.Errorf("Query Rank Error :", err)
 		return
 	}
-
-	return check, nil
+	fmt.Println("err", err)
+	return ID, nil
 }

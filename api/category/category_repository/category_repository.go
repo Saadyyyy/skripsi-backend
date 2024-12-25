@@ -80,20 +80,19 @@ func (r *CategoryRepositoryImpl) GetCategoryByID(ctx context.Context, id int64) 
 }
 
 func (r *CategoryRepositoryImpl) GetListCategory(ctx context.Context, searchCriteria map[string]interface{}) (ct []models.Category, err error) {
-
-	// Ensure there's a space before LIMIT
-	sqlQuery := queryGetAllCategory + searchCriteria["custom_query"].(string) + " LIMIT "
+	sqlQuery := queryGetAllCategory + searchCriteria["custom_query"].(string)
 
 	rows, err := r.db.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			err = fmt.Errorf("queryGetSoal err: %+v", err)
+			err = fmt.Errorf("queryGetAllCategory err: %+v", err)
 			return
 		}
 		err = nil
 		return
 	}
 	defer rows.Close()
+	fmt.Println("rowss", rows)
 
 	var s models.Category
 	for rows.Next() {
@@ -119,7 +118,9 @@ func (r *CategoryRepositoryImpl) CountUser(ctx context.Context, params map[strin
 	if err != nil {
 		return 0, err
 	}
+	fmt.Println("countt", count)
 	return count, nil
+
 }
 
 func (r *CategoryRepositoryImpl) UpdateCategory(ctx context.Context, ct models.Category) (err error) {

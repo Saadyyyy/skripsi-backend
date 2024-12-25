@@ -4,6 +4,7 @@ import (
 	categoryhandler "bank_soal/api/category/category_handler"
 	categoryrepository "bank_soal/api/category/category_repository"
 	categoryservice "bank_soal/api/category/category_service"
+	chatbot "bank_soal/api/chatBot"
 	rangkinghandler "bank_soal/api/rangking/rangking_handler"
 	rangkingrepository "bank_soal/api/rangking/rangking_repository"
 	rangkingservice "bank_soal/api/rangking/rangking_service"
@@ -15,11 +16,12 @@ import (
 	serviceUser "bank_soal/api/user/user_service"
 	"bank_soal/middleware"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
-func Register(db *sqlx.DB, echo *echo.Echo) {
+func Register(db *sqlx.DB, echo *echo.Echo, rdb *redis.Client) {
 	//user
 	repositoryUser := repositoryUser.NewUserRepository(db)
 	serviceUser := serviceUser.NewUserService(repositoryUser, db)
@@ -37,11 +39,11 @@ func Register(db *sqlx.DB, echo *echo.Echo) {
 	//soal
 	repositorySoal := soal_repository.NewSoalRepository(db)
 	serviceSoal := soal_service.NewSoalService(repositorySoal, db)
-	handlersoal := soal_handler.NewSoalHandler(serviceSoal)
+	handlersoal := soal_handler.NewSoalHandler(serviceSoal, rdb)
 	//route
 	soal := echo.Group("/soal")
-	soal.POST("/create", handlersoal.CreateSoal, middleware.JWTMiddleware()).Name = "CreateSoal"
-	soal.GET("/", handlersoal.GetSoal, middleware.JWTMiddleware()).Name = "GetSoal"
+	soal.POST("/create", handlersoal.CreateSoal, middleware.JWTMiddleware(), middleware.AdminMiddleware).Name = "CreateSoal"
+	soal.GET("/", handlersoal.GetSoal).Name = "GetSoal"
 	soal.POST("/update", handlersoal.UpdateSoal, middleware.JWTMiddleware()).Name = "UpdateSoal"
 	soal.POST("/delete", handlersoal.DeletedSoal, middleware.JWTMiddleware()).Name = "DeletedSoal"
 	soal.GET("/detail", handlersoal.GetSoalById, middleware.JWTMiddleware()).Name = "GetSoalById"
@@ -60,13 +62,19 @@ func Register(db *sqlx.DB, echo *echo.Echo) {
 
 	// rangkings
 	repoRank := rangkingrepository.NewRangkingRepository(db)
-	serviceRank := rangkingservice.NewRangkingService(repoRank, repositorySoal, repositoryCategory, repositoryUser)
+	serviceRank := rangkingservice.NewRangkingService(repoRank, repositoryUser)
 	handlerRank := rangkinghandler.NewRangkingHandler(serviceRank)
 	//route
 	rank := echo.Group("/rank")
-	rank.GET("/", handlerRank.GetUserAndPoint, middleware.JWTMiddleware())
-	rank.POST("/create", handlerRank.CreateRangking, middleware.JWTMiddleware())
-	rank.GET("/point", handlerRank.GetPointByUserId, middleware.JWTMiddleware())
-	rank.POST("/update", handlerRank.UpdateNextUser, middleware.JWTMiddleware())
+	rank.GET("/", handlerRank.GetRank, middleware.JWTMiddleware())
+	rank.POST("/create", handlerRank.CreateRank, middleware.JWTMiddleware())
+	rank.POST("/update", handlerRank.UpdateRank, middleware.JWTMiddleware())
+	rank.GET("/check", handlerRank.CheckRank, middleware.JWTMiddleware())
+
+	//chat bot
+	chatBotHandler := chatbot.NewChatBotHandler(rdb)
+
+	// Rute ChatSoalHandler
+	echo.GET("/chat/soal/:id", chatBotHandler.ChatSoalHandler, middleware.JWTMiddleware()).Name = "ChatSoalHandler"
 
 }

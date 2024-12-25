@@ -52,22 +52,15 @@ func (s *CategoryServiceImpl) GetAllCategory(ctx context.Context, filter models.
 		keywordLower := strings.ToLower(filter.Keyword)
 		params["custom_query"] = fmt.Sprintf("%s AND LOWER(category) LIKE '%%%s%%'", params["custom_query"], keywordLower)
 	}
-	if filter.Page <= 0 {
-		filter.Page = 1 // default page
-	}
-
-	if filter.Limit <= 0 || filter.Limit > 10 {
-		filter.Limit = 10 // default limit
-	}
 
 	user, err := s.categoryRepo.GetListCategory(ctx, params)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
+		return nil, 0, fmt.Errorf("failed to get category from repository: %+v", err)
 	}
 
 	totalData, err = s.categoryRepo.CountUser(ctx, params)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
+		return nil, 0, fmt.Errorf("failed to count category from repository: %+v", err)
 	}
 
 	resp := make([]models.Category, len(user))

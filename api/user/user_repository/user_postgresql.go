@@ -5,8 +5,8 @@ import (
 	"bank_soal/utils/healper"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -14,7 +14,7 @@ import (
 
 const (
 	queryInsertUser = `
-		INSERT INTO users (username,password,email,role,created_at,created_by)VALUES ($1, $2, $3, $4, $5,$6)
+		INSERT INTO users (username,password,email,role,created_at,created_by,profile)VALUES ($1, $2, $3, $4, $5,$6,$7)
 		RETURNING user_id;
 	`
 	queryGetUser = `		
@@ -35,27 +35,29 @@ const (
 	`
 
 	queryGetAllUser = `
-		select user_id,username,password,email,role,created_at from users where deleted_at is null
+		select user_id,username,password,email,role,created_at,profile from users where deleted_at is null
 	`
 
 	queryCountUser = `
 		select count(user_id) from users where deleted_at is null
 	`
-	queryCekRole = `SELECT role FROM users WHERE id = $1 LIMIT 1`
+	queryCekRole = `SELECT role FROM users WHERE user_id = $1 LIMIT 1`
 
 	queryGetUserById = `
-	SELECT user_id, name, role FROM users WHERE id = $1
+		SELECT user_id, username, role,profile FROM users WHERE user_id= $1 and deleted_at is null
 	`
+	queryUpdateRole = `UPDATE users SET role = $1,updated_at = $3 where user_id =$2 and deleted_at is null`
 )
 
 type UserRepositoryInterface interface {
 	CreateUser(ctx context.Context, user models.Users) (ID int64, err error)
 	LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, error)
 	UpdateUser(ctx context.Context, user models.Users) error
-	GetAllUser(ctx context.Context, searchCriteria map[string]interface{}, page int, limit int) (user []models.Users, err error)
+	GetAllUser(ctx context.Context, searchCriteria map[string]interface{}) (user []models.Users, err error)
 	CountUser(ctx context.Context, params map[string]interface{}) (count int64, err error)
 	GetUserRole(ctx context.Context, userID int64) (int, error)
-	GetUserByID(ctx context.Context, userID int) (models.Users, error)
+	UpdateUserRoleByID(ctx context.Context, user models.Users) error
+	GetUserByID(ctx context.Context, userID int64) (user models.Users, err error)
 }
 type UserRepositoryInterfaceImpl struct {
 	db *sqlx.DB
@@ -70,7 +72,7 @@ func (r *UserRepositoryInterfaceImpl) CreateUser(ctx context.Context, user model
 	createdAt := time.Now()
 	createdBy := healper.GetCreatedByFromCtx(ctx)
 
-	err = r.db.QueryRowContext(ctx, queryInsertUser, user.Username, user.Password, user.Email, user.Role, createdAt, createdBy).Scan(&ID)
+	err = r.db.QueryRowContext(ctx, queryInsertUser, user.Username, user.Password, user.Email, user.Role, createdAt, createdBy, user.Profile).Scan(&ID)
 	if err != nil {
 		err = fmt.Errorf("queryInsertUser err %+v", err)
 		return
@@ -103,16 +105,9 @@ func (r *UserRepositoryInterfaceImpl) UpdateUser(ctx context.Context, user model
 	return nil
 }
 
-func (r *UserRepositoryInterfaceImpl) GetAllUser(ctx context.Context, searchCriteria map[string]interface{}, page int, limit int) (user []models.Users, err error) {
-	if limit > 10 {
-		limit = 10
-	}
-	offset := (page - 1) * limit
+func (r *UserRepositoryInterfaceImpl) GetAllUser(ctx context.Context, searchCriteria map[string]interface{}) (user []models.Users, err error) {
 
-	limitString := strconv.Itoa(limit)
-	offsetString := strconv.Itoa(offset)
-
-	sqlQuery := queryGetAllUser + searchCriteria["custom_query"].(string) + " LIMIT " + limitString + " OFFSET " + offsetString
+	sqlQuery := queryGetAllUser + searchCriteria["custom_query"].(string) + " LIMIT "
 
 	rows, err := r.db.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -127,7 +122,7 @@ func (r *UserRepositoryInterfaceImpl) GetAllUser(ctx context.Context, searchCrit
 	defer rows.Close()
 	for rows.Next() {
 		var u models.Users
-		err = rows.Scan(&u.UserId, &u.Username, &u.Password, &u.Email, &u.Role, &u.CreatedAt)
+		err = rows.Scan(&u.UserId, &u.Username, &u.Password, &u.Email, &u.Role, &u.CreatedAt, &u.Profile)
 		if err != nil {
 			err = fmt.Errorf("rows scan err : %+v", err)
 			return nil, err
@@ -165,16 +160,30 @@ func (r *UserRepositoryInterfaceImpl) GetUserRole(ctx context.Context, userID in
 	return role, nil
 }
 
-func (r *UserRepositoryInterfaceImpl) GetUserByID(ctx context.Context, userID int) (models.Users, error) {
+func (r *UserRepositoryInterfaceImpl) GetUserByID(ctx context.Context, userID int64) (models.Users, error) {
 	var user models.Users
-
-	err := r.db.QueryRowContext(ctx, queryGetUserById, userID).Scan(&userID)
+	err := r.db.QueryRowContext(ctx, queryGetUserById, userID).Scan(
+		&user.UserId,
+		&user.Username,
+		&user.Role,
+		&user.Profile,
+	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return user, fmt.Errorf("user not found: %w", err)
 		}
 		return user, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	return user, nil
+}
+
+func (r *UserRepositoryInterfaceImpl) UpdateUserRoleByID(ctx context.Context, user models.Users) error {
+	updatedAd := time.Now()
+	_, err := r.db.ExecContext(ctx, queryUpdateRole, user.Role, user.UserId, updatedAd)
+	if err != nil {
+		return fmt.Errorf("queryUpdateUser err %+v", err)
+	}
+
+	return nil
 }

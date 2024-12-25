@@ -9,15 +9,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 )
 
 type SoalServiceInterface interface {
-	CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error)
-	GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalData int64, err error)
-	UpdateSoal(ctx context.Context, soal models.Soals) error
+	CreateSoal(ctx context.Context, soal models.SoalExsample) (ID int64, err error)
+	GetSoal(ctx context.Context, filter models.FilterSoal, rdb *redis.Client) (soal []models.SoalExsample, totalData int64, err error)
+	UpdateSoal(ctx context.Context, soal models.SoalExsample) error
 	DeletedSoal(ctx context.Context, ID int64) error
-	GetSoalById(ctx context.Context, ID int64) (soal models.Soals, err error)
+	GetSoalById(ctx context.Context, ID int64) (soal models.SoalExsample, err error)
 }
 
 type SoalServiceImpl struct {
@@ -30,7 +31,7 @@ func NewSoalService(repo repository.SoalRepositoryInterface, db *sqlx.DB) SoalSe
 	return &SoalServiceImpl{repo: repo, db: db}
 }
 
-func (s *SoalServiceImpl) CreateSoal(ctx context.Context, soal models.Soals) (ID int64, err error) {
+func (s *SoalServiceImpl) CreateSoal(ctx context.Context, soal models.SoalExsample) (ID int64, err error) {
 	if soal.Soal == "" || soal.JawabanB == "" || soal.JawabanD == "" || soal.JawabanA == "" || soal.JawabanC == "" || soal.JawabanE == "" || soal.JawabanBenar == "" {
 		return 0, fmt.Errorf("tidak boleh kosong harus di isi")
 	}
@@ -43,7 +44,7 @@ func (s *SoalServiceImpl) CreateSoal(ctx context.Context, soal models.Soals) (ID
 	return ID, nil
 }
 
-func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal) (soal []models.Soals, totalData int64, err error) {
+func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal, rdb *redis.Client) ([]models.SoalExsample, int64, error) {
 	params := map[string]interface{}{
 		"deleted_at":   nil,
 		"custom_query": "",
@@ -56,22 +57,22 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 
 	if filter.Category != 0 {
 		categoryString := strconv.Itoa(int(filter.Category))
-		params["custom_query"] = fmt.Sprintf("%s AND soals.category_id='%s'", params["custom_query"], categoryString)
+		params["custom_query"] = fmt.Sprintf("%s AND soal_exsamples.category_id='%s'", params["custom_query"], categoryString)
 	}
 
-	soal, err = s.repo.GetSoal(ctx, params)
+	soal, err := s.repo.GetSoal(ctx, params, rdb)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get soal from repository: %+v", err)
 	}
 
-	totalData, err = s.repo.CountSoal(ctx, params)
+	totalData, err := s.repo.CountSoal(ctx, params)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count soal from repository: %+v", err)
 	}
 
-	resp := make([]models.Soals, len(soal))
+	resp := make([]models.SoalExsample, len(soal))
 	for i, s := range soal {
-		resp[i] = models.Soals{
+		resp[i] = models.SoalExsample{
 			SoalId:       s.SoalId,
 			CategoryId:   s.CategoryId,
 			Soal:         s.Soal,
@@ -88,7 +89,7 @@ func (s *SoalServiceImpl) GetSoal(ctx context.Context, filter models.FilterSoal)
 	return resp, totalData, nil
 }
 
-func (s *SoalServiceImpl) UpdateSoal(ctx context.Context, soal models.Soals) error {
+func (s *SoalServiceImpl) UpdateSoal(ctx context.Context, soal models.SoalExsample) error {
 
 	err := s.repo.UpdateSoal(ctx, soal)
 	if err != nil {
@@ -107,10 +108,10 @@ func (s *SoalServiceImpl) DeletedSoal(ctx context.Context, ID int64) error {
 	return nil
 }
 
-func (s *SoalServiceImpl) GetSoalById(ctx context.Context, id int64) (result models.Soals, err error) {
+func (s *SoalServiceImpl) GetSoalById(ctx context.Context, id int64) (result models.SoalExsample, err error) {
 	result, err = s.repo.GetSoalById(ctx, id)
 	if err != nil {
-		return models.Soals{}, fmt.Errorf("gagal getSoalById dari repository %+v", err)
+		return models.SoalExsample{}, fmt.Errorf("gagal getSoalById dari repository %+v", err)
 	}
 	return result, err
 }

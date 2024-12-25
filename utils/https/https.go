@@ -160,25 +160,3 @@ func WriteResponse(ctx echo.Context, resp BaseResponse, statusCode int) error {
 		return ctx.JSON(statusCode, resp)
 	}
 }
-
-// // WriteFileDownloadExcel writes excel file to response
-// // under library github.com/xuri/excelize/v2
-// func WriteFileDownloadExcel(ctx echo.Context, fileName string, file *excelize.File) error {
-// 	ctx.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-// 	ctx.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-// 	ctx.Response().Header().Set("Content-Transfer-Encoding", "binary")
-// 	ctx.Response().Header().Set("Expires", "0")
-
-// 	return file.Write(ctx.Response())
-// }
-
-// // WriteFileDownloadExcel writes excel file to response
-// // under library github.com/xuri/excelize/v2
-// func WriteFileDownloadPdf(ctx echo.Context, fileName string, pdf *gofpdf.Fpdf) error {
-// 	ctx.Response().Header().Set("Content-Type", "application/pdf")
-// 	ctx.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-// 	ctx.Response().Header().Set("Content-Transfer-Encoding", "binary")
-// 	ctx.Response().Header().Set("Expires", "0")
-
-// 	return pdf.Output(ctx.Response())
-// }

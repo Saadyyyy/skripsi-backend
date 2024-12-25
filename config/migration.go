@@ -15,20 +15,26 @@ func DBMigration(db *gorm.DB) {
 	}
 
 	// Migrate Soals
-	err = db.AutoMigrate(&models.Soals{})
-	if err != nil {
-		log.Fatalf("Failed to migrate Soals: %v", err)
+	err2 := db.AutoMigrate(&models.Soals{})
+	if err2 != nil {
+		log.Fatalf("Failed to migrate Soals: %v", err2)
 	}
 
 	// Migrate Users
-	err = db.AutoMigrate(&models.Users{})
-	if err != nil {
-		log.Fatalf("Failed to migrate Users: %v", err)
+	err3 := db.AutoMigrate(&models.Users{})
+	if err3 != nil {
+		log.Fatalf("Failed to migrate Users: %v", err3)
 	}
 
 	// Migrate Rangkings
-	err = db.AutoMigrate(&models.Rangking{})
-	if err != nil {
-		log.Fatalf("Failed to migrate Users: %v", err)
+	err4 := db.AutoMigrate(&models.Rangking{})
+	if err4 != nil {
+		log.Fatalf("Failed to migrate Rangking: %v", err4)
+	}
+
+	// Migrate Soal Exsample
+	err5 := db.AutoMigrate(&models.SoalExsample{})
+	if err5 != nil {
+		log.Fatalf("Failed to migrate Rangking: %v", err5)
 	}
 }

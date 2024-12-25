@@ -9,15 +9,17 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v4"
 )
 
 type SoalHandler struct {
 	service service.SoalServiceInterface
+	rdb     *redis.Client
 }
 
-func NewSoalHandler(service service.SoalServiceInterface) *SoalHandler {
-	return &SoalHandler{service: service}
+func NewSoalHandler(service service.SoalServiceInterface, rdb *redis.Client) *SoalHandler {
+	return &SoalHandler{service: service, rdb: rdb}
 }
 
 // handler/soal_handler.go
@@ -49,7 +51,7 @@ func (h *SoalHandler) CreateSoal(e echo.Context) error {
 		return https.WriteBadRequestResponseWithErrMsg(e, https.ResponseBadRequestError, err)
 	}
 
-	resp := models.Soals{
+	resp := models.SoalExsample{
 		SoalId:       req.SoalID,
 		CategoryId:   req.CategoryID,
 		Soal:         req.Soal,
@@ -80,7 +82,7 @@ func (h *SoalHandler) GetSoal(e echo.Context) error {
 	filter.TglSelesai = e.QueryParam("tgl_selesai")
 	filter.Keyword = e.QueryParam("soal")
 
-	soal, totalData, err := h.service.GetSoal(ctx, filter)
+	soal, totalData, err := h.service.GetSoal(ctx, filter, h.rdb) // Pass Redis client here
 	if err != nil {
 		return https.WriteServerErrorResponse(e, fName, err)
 	}
@@ -132,7 +134,7 @@ func (h *SoalHandler) UpdateSoal(e echo.Context) error {
 	}
 
 	// Create the response model
-	resp := models.Soals{
+	resp := models.SoalExsample{
 		SoalId:       soalID,
 		CategoryId:   req.CategoryID,
 		Soal:         req.Soal,

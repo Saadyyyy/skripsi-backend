@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 )
 
 type UserService interface {
@@ -40,6 +41,9 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 	if user.Username == "" || user.Password == "" || user.Email == "" {
 		return 0, fmt.Errorf("tidak boleh kosong harus diisi")
 	}
+
+	user.Username = strings.ToLower(user.Username)
+	user.Email = strings.ToLower(user.Email)
 
 	// Cek username yang sudah ada
 	if user.Username != "" {
@@ -70,6 +74,7 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 	if err != nil {
 		return 0, fmt.Errorf("gagal mendapatkan gambar: %v", err)
 	}
+	godotenv.Load(".env")
 	baseURL, exists := os.LookupEnv("BASEURL")
 	if !exists {
 		return 0, fmt.Errorf("variabel lingkungan BASEURL tidak ditemukan")
@@ -94,7 +99,7 @@ func (u *UserServiceImpl) CreateUser(ctx context.Context, user models.Users) (ID
 
 func pilihGambarAcak() (string, error) {
 
-	gambarList := []string{"foto1.png", "foto2.png", "foto3.png", "foto4.png"}
+	gambarList := []string{"foto1.jpg", "foto2.jpg", "foto3.jpg", "foto4.jpg"}
 	rand.Seed(time.Now().UnixNano())
 	gambarTerpilih := gambarList[rand.Intn(len(gambarList))]
 
@@ -110,6 +115,8 @@ func pilihGambarAcak() (string, error) {
 }
 
 func (u *UserServiceImpl) LoginUser(ctx context.Context, usernameOrEmail, password string) (models.UsersRespon, string, error) {
+	usernameOrEmail = strings.ToLower(usernameOrEmail)
+
 	user, err := u.repo.LoginUser(ctx, usernameOrEmail, password)
 	if err != nil {
 		return models.UsersRespon{}, "", fmt.Errorf("gagal get login user repository: %+v", err)
@@ -119,13 +126,13 @@ func (u *UserServiceImpl) LoginUser(ctx context.Context, usernameOrEmail, passwo
 	if !comparePass {
 		return models.UsersRespon{}, "", fmt.Errorf("gagal compare pass")
 	}
-	users := models.Users{}
 
 	// Create JWT token
-	token, err2 := middleware.CreateToken(users.Username, user.Role)
+	token, err2 := middleware.CreateToken(user.UserId, user.Role)
 	if err2 != nil {
 		return models.UsersRespon{}, "", fmt.Errorf("gagal create token: %+v", err)
 	}
+
 	return user, token, nil
 }
 
@@ -154,11 +161,6 @@ func (s *UserServiceImpl) GetAllUser(ctx context.Context, filter models.FilterUs
 		keywordLower := strings.ToLower(filter.Keyword)
 		params["custom_query"] = fmt.Sprintf("%s AND LOWER(username) LIKE '%%%s%%'", params["custom_query"], keywordLower)
 	}
-
-	// if filter.Category != 0 {
-	// 	categoryString := strconv.Itoa(int(filter.Category))
-	// 	params["custom_query"] = fmt.Sprintf("%s AND category_id='%s'", params["custom_query"], categoryString)
-	// }
 
 	user, err = s.repo.GetAllUser(ctx, params)
 	if err != nil {
@@ -191,7 +193,7 @@ func (s *UserServiceImpl) GetUserByID(ctx context.Context, userId int64) (user m
 	if err != nil {
 		return models.Users{}, fmt.Errorf("gagal get function dari repository ")
 	}
-	fmt.Println("result", result)
+
 	return result, nil
 }
 

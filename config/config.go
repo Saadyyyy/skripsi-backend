@@ -9,12 +9,13 @@ import (
 )
 
 type AppConfig struct {
-	SERVERPORT int
-	DBPORT     int
-	DBHOST     string
-	DBUSERNAME string
-	DBPASSWORD string
-	DBNAME     string
+	SERVERPORT  int
+	DBPORT      int
+	DBHOST      string
+	DBUSERNAME  string
+	DBPASSWORD  string
+	DBNAME      string
+	REDISADDRES string
 }
 
 func InitConfig() *AppConfig {
@@ -66,6 +67,9 @@ func loadConfig() *AppConfig {
 
 	if val, found := os.LookupEnv("DBNAME"); found {
 		res.DBNAME = val
+	}
+	if val, found := os.LookupEnv("REDISADDRES"); found {
+		res.REDISADDRES = val
 	}
 
 	return res
